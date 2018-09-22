@@ -473,20 +473,20 @@
                     },
                     "files":{
                         "files":{
-                            "/app/index.html":{
+                            "/app/index.php":{
                                 "content":{
                                     "Fn::Join": ["",[
-                                        "<html><head><title>AWS CloudFormation</title</head>",
+                                        "<html><head><title>AWS CloudFormation</title></head>",
                                         "<body>",
-                                        "<h1>Welcome to CloudFormation",
+                                        "<h1>Welcome to CloudFormation</h1><br>",
                                         "<?php\n",
-                                        " echo 'This is from PHP';",
+                                        " echo '<h2>This is from PHP</h2>';",
                                         "?>",
                                         "</body>",
                                         "</html>"
                                     ]]
                                 },
-                                "mode":"000600",
+                                "mode":"000644",
                                 "owner":"root",
                                 "group":"root"
                             }
