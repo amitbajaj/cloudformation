@@ -1,0 +1,725 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [ {
+                "Label": { "default": "Customize the stack" },
+                "Parameters": ["InstanceSize", "KeyName", "IPSegmentForVPC", "IPSegmentForWS", "IPSegmentForFS" ]
+                }]
+        }
+    },
+    "Parameters": {
+        "KeyName": {
+            "Description": "The EC2 Key Pair to allow SSH access to the instance",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "A valid key name should be selected",
+            "MinLength": "1"
+        },
+        "IPSegmentForVPC": {
+            "Description": "The CIDR Block range for VPC",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.0.0.0/16"
+        },
+        "IPSegmentForPublicNetworkinAZ1":{
+            "Description": "The CIDR Block range for Public Subnet",
+            "Type": "String",
+            "MinLength":"1",
+            "Default":"10.0.0.0/28"
+        },
+        "IPSegmentForWSinAZ1": {
+            "Description": "The CIDR Block range for Web Servers",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.0.0.32/27"
+        },
+        "IPSegmentForFSinAZ1": {
+            "Description": "The CIDR Block range for EFS",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.0.0.64/27"
+        },
+        "IPSegmentForPublicNetworkinAZ2":{
+            "Description": "The CIDR Block range for Public Subnet",
+            "Type": "String",
+            "MinLength":"1",
+            "Default":"10.0.1.0/28"
+        },
+        "IPSegmentForWSinAZ2": {
+            "Description": "The CIDR Block range for Web Servers",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.0.1.32/27"
+        },
+        "IPSegmentForFSinAZ2": {
+            "Description": "The CIDR Block range for EFS",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.0.1.64/27"
+        },
+        "InstanceSize": {
+            "Description": "The size of the instance to create",
+            "Type": "String",
+            "Default": "t2.micro",
+            "AllowedValues": [
+                "t1.micro",
+                "t2.nano",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "t2.large",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "m4.4xlarge",
+                "m4.10xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "g2.2xlarge",
+                "g2.8xlarge",
+                "r3.large",
+                "r3.xlarge",
+                "r3.2xlarge",
+                "r3.4xlarge",
+                "r3.8xlarge",
+                "i2.xlarge",
+                "i2.2xlarge",
+                "i2.4xlarge",
+                "i2.8xlarge",
+                "d2.xlarge",
+                "d2.2xlarge",
+                "d2.4xlarge",
+                "d2.8xlarge",
+                "hi1.4xlarge",
+                "hs1.8xlarge",
+                "cr1.8xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        }
+    },
+    "Resources": {
+        "WebServerSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "GroupDescription": "Allow SSH and Web Access from anywhere",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 2049,
+                        "ToPort": 2049,
+                        "CidrIp": {
+                            "Ref": "IPSegmentForWSinAZ1"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 2049,
+                        "ToPort": 2049,
+                        "CidrIp": {
+                            "Ref": "IPSegmentForWSinAZ2"
+                        }
+                    }
+                ]
+            }
+        },
+        "LoadBalancerSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "GroupDescription": "Allow Web Access from anywhere",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 80,
+                        "ToPort": 80,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "PublicSubnetinAZ1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "IPSegmentForPublicNetworkinAZ1"
+                },
+                "MapPublicIpOnLaunch": "true",
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+            }
+        },
+        "PublicSubnetinAZ2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "IPSegmentForPublicNetworkinAZ2"
+                },
+                "MapPublicIpOnLaunch": "true",
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+            }
+        },
+        "WebServerSubnetinAZ1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "IPSegmentForWSinAZ1"
+                },
+                "MapPublicIpOnLaunch": "true",
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+            }
+        },
+        "WebServerSubnetinAZ2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "IPSegmentForWSinAZ2"
+                },
+                "MapPublicIpOnLaunch": "true",
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+            }
+        },
+        "WebServerVPC": {
+            "Type": "AWS::EC2::VPC",
+            "Description": "VPC to host the resources",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "IPSegmentForVPC"
+                },
+                "EnableDnsSupport": "true",
+                "EnableDnsHostnames": "true"
+            }
+        },
+        "WebSiteFS": {
+            "Type": "AWS::EFS::FileSystem",
+            "Properties": {}
+        },
+        "WebSiteRootinAZ1": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "WebSiteFS"
+                },
+                "SubnetId": {
+                    "Ref": "EFSSubnetinAZ1"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "WebServerSG"
+                    }
+                ]
+            }
+        },
+        "WebSiteRootinAZ2": {
+            "Type": "AWS::EFS::MountTarget",
+            "Properties": {
+                "FileSystemId": {
+                    "Ref": "WebSiteFS"
+                },
+                "SubnetId": {
+                    "Ref": "EFSSubnetinAZ2"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "WebServerSG"
+                    }
+                ]
+            }
+        },
+        "EFSSubnetinAZ1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "CidrBlock": {
+                    "Ref": "IPSegmentForFSinAZ1"
+                },
+                "MapPublicIpOnLaunch": "false",
+                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+            }
+        },
+        "EFSSubnetinAZ2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "CidrBlock": {
+                    "Ref": "IPSegmentForFSinAZ2"
+                },
+                "MapPublicIpOnLaunch": "false",
+                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+            }
+        },
+        "VPCIG": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {}
+        },
+        "VPCIGAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "InternetGatewayId": {
+                    "Ref": "VPCIG"
+                }
+            }
+        },
+        "PublicRouteTableForAZ1": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                }
+            }
+        },
+        "PublicRouteTableForAZ2": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                }
+            }
+        },
+        "InternetRouteForAZ1": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableForAZ1"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "VPCIG"
+                }
+            }
+        },
+        "InternetRouteForAZ2": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableForAZ2"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "VPCIG"
+                }
+            }
+        },
+        "PublicSubnetToRouteTableinAZ1": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableForAZ1"
+                },
+                "SubnetId": {
+                    "Ref": "PublicSubnetinAZ1"
+                }
+            }
+        },
+        "PublicSubnetToRouteTableinAZ2": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTableForAZ2"
+                },
+                "SubnetId": {
+                    "Ref": "PublicSubnetinAZ2"
+                }
+            }
+        },
+        "PublicIPinAZ1":{
+            "Type":"AWS::EC2::EIP",
+            "Properties":{
+                "Domain":"vpc"
+            }
+        },
+        "PublicIPinAZ2":{
+            "Type":"AWS::EC2::EIP",
+            "Properties":{
+                "Domain":"vpc"
+            }
+        },
+        "NATGatewayinAZ1":{
+            "Type":"AWS::EC2::NatGateway",
+            "Properties":{
+                "AllocationId": {"Fn::GetAtt" : ["PublicIPinAZ1", "AllocationId"]},
+                "SubnetId":{"Ref":"PublicSubnetinAZ1"}
+            }
+        },
+        "NATGatewayinAZ2":{
+            "Type":"AWS::EC2::NatGateway",
+            "Properties":{
+                "AllocationId":{"Fn::GetAtt" : ["PublicIPinAZ2", "AllocationId"]},
+                "SubnetId":{"Ref":"PublicSubnetinAZ2"}
+            }
+        },
+        "PrivateRouteTableForAZ1": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                }
+            }
+        },
+        "PrivateRouteTableForAZ2": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                }
+            }
+        },
+        "NATRouteInAZ1": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableForAZ1"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NATGatewayinAZ1"
+                }
+            }
+        },
+        "NATRouteInAZ2": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableForAZ2"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": {
+                    "Ref": "NATGatewayinAZ2"
+                }
+            }
+        },
+        "SubnetToRouteTableinAZ1": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableForAZ1"
+                },
+                "SubnetId": {
+                    "Ref": "WebServerSubnetinAZ1"
+                }
+            }
+        },
+        "SubnetToRouteTableinAZ2": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableForAZ2"
+                },
+                "SubnetId": {
+                    "Ref": "WebServerSubnetinAZ2"
+                }
+            }
+        },
+        "EFSSubnetinAZ1ToRouteTable": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableForAZ1"
+                },
+                "SubnetId": {
+                    "Ref": "EFSSubnetinAZ1"
+                }
+            }
+        },
+        "EFSSubnetinAZ2ToRouteTable": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateRouteTableForAZ2"
+                },
+                "SubnetId": {
+                    "Ref": "EFSSubnetinAZ2"
+                }
+            }
+        },
+        "WebServerLBListener":{
+            "Type":"AWS::ElasticLoadBalancingV2::Listener",
+            "Properties":{
+                "DefaultActions":[{
+                    "Type":"forward",
+                    "TargetGroupArn":{"Ref":"WebServerLBTargetGroup"}
+                }],
+                "LoadBalancerArn":{"Ref":"WebServerLB"},
+                "Port":"80",
+                "Protocol":"HTTP"    
+            }
+        },
+        "WebServerLB":{
+            "Type" : "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties":{
+                "IpAddressType":"ipv4",
+                "Name":"LoadBalancerForWebServers",
+                "Scheme":"internet-facing",
+                "SecurityGroups":[ {"Ref":"LoadBalancerSG"} ],
+                "Subnets":[{"Ref":"WebServerSubnetinAZ1"},{"Ref":"WebServerSubnetinAZ2"}],
+                "Type":"application"
+            }
+        },
+        "WebServerLBTargetGroup":{
+            "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties":{
+                "HealthCheckInternalSeconds":"10",
+                "UnhealthyThresholdCount": "3",
+                "HealthCheckPath":"/",
+                "Name":"LoadBalancerTargetGroupForWebServers",
+                "Port":"80",
+                "Protocol":"HTTP",
+                "VpcId":{"Ref":"WebServerVPC"}
+            }
+        },
+        "WebServerLC": {
+            "Type" : "AWS::AutoScaling::LaunchConfiguration",
+            "DependsOn": ["WebSiteRootinAZ1", "WebSiteRootinAZ2", "VPCIGAttachment"],
+            "Properties" : {
+                "AssociatePublicIpAddress" : "false",
+                "EbsOptimized" : "false",
+                "ImageId":{"Fn::FindInMap": ["AMIRegionMap",{"Ref": "AWS::Region"},"HVM64"]},
+                "InstanceMonitoring" : false,
+                "InstanceType" : {"Ref": "InstanceSize"},
+                "KeyName" : {"Ref": "KeyName"},
+                "LaunchConfigurationName" : {"Fn::Join": ["",["WebServerLCin",{"Ref":"AWS::Region"}]]},
+                "SecurityGroups" : [{"Ref":"WebServerSG"}],
+                "UserData" : {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -xe\n",
+                                "yum install -y aws-cfn-bootstrap\n",
+                                "# Install the files and packages from the metadata\n",
+                                "/opt/aws/bin/cfn-init -v ",
+                                "         --stack ",
+                                {"Ref": "AWS::StackName"},
+                                "         --resource WebServer ",
+                                "         --configsets Initialize ",
+                                "         --region ",
+                                {"Ref": "AWS::Region"},
+                                "\n",
+                                "# Signal the status from cfn-init\n",
+                                "/opt/aws/bin/cfn-signal -e $? ",
+                                "         --stack ",
+                                {"Ref": "AWS::StackName"},
+                                "         --resource WebServer ",
+                                "         --region ",
+                                {"Ref": "AWS::Region"},
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "Initialize": [
+                            "init",
+                            "files"
+                        ]
+                    },
+                    "init": {
+                        "packages": {
+                            "yum": {
+                                "httpd": [],
+                                "php": []
+                            }
+                        },
+                        "commands": {
+                            "01_create_dir": {
+                                "command": "sudo mkdir /app"
+                            },
+                            "02_mount_fs": {
+                                "command": {
+                                    "Fn::Sub": "sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${WebSiteFS}.efs.${AWS::Region}.amazonaws.com:/ /app"
+                                }
+                            },
+                            "03_own_dir": {
+                                "command": "sudo chown ec2-user:ec2-user -R /app"
+                            },
+                            "04_redirect_website_root": {
+                                "command": "sudo rmdir html",
+                                "cwd" : "/var/www"
+                            },
+                            "05_create_new_link": {
+                                "command": "sudo ln -s /app html",
+                                "cwd" : "/var/www"
+                            }                            
+                        },
+                        "services": {
+                            "sysvinit": {
+                                "httpd": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true"
+                                }
+                            }
+                        }
+                    },
+                    "files":{
+                        "files":{
+                            "/app/index.php":{
+                                "content":{
+                                    "Fn::Join": ["",[
+                                        "<!DOCTYPE html>",
+                                        "<html><head><title>AWS CloudFormation</title></head>",
+                                        "<body>",
+                                        "<h1>Welcome to CloudFormation</h1><hr>",
+                                        "<?php\n",
+                                        " echo '<u><h2>This is from PHP</h2></u>';",
+                                        "?>",
+                                        "</body>",
+                                        "</html>"
+                                    ]]
+                                },
+                                "mode":"000644",
+                                "owner":"root",
+                                "group":"root"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "WebServerASG": {
+            "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "DependsOn": ["NATGatewayinAZ1","NATGatewayinAZ2"],
+            "Properties" : {
+               "AutoScalingGroupName" : {"Fn::Join":["", ["WebServerASGin", {"Ref":"AWS::Region"}]]},
+               "AvailabilityZones" : [ {"Fn::Select":["0", {"Fn::GetAZs":{"Ref":"AWS::Region"} }]}, {"Fn::Select":["1", {"Fn::GetAZs":{"Ref":"AWS::Region"} }]} ],
+               "VPCZoneIdentifier" : [{"Ref":"WebServerSubnetinAZ1"},{"Ref":"WebServerSubnetinAZ2"}],
+               "Cooldown" : "15",
+               "DesiredCapacity" : "1",
+               "HealthCheckGracePeriod" : 10,
+               "HealthCheckType" : "ELB",
+               "LaunchConfigurationName" : {"Ref":"WebServerLC"},
+               "TargetGroupARNs" : [ {"Ref":"WebServerLBTargetGroup"} ],
+               "MaxSize" : "3",
+               "MinSize" : "1"
+            }
+        }
+    },
+    "Mappings": {
+        "AMIRegionMap": {
+            "us-east-1": {
+                "HVM64": "ami-04681a1dbd79675a5"
+            },
+            "us-east-2": {
+                "HVM64": "ami-0b59bfac6be064b78"
+            },
+            "us-west-1": {
+                "HVM64": "ami-0782017a917e973e7"
+            },
+            "us-west-2": {
+                "HVM64": "ami-6cd6f714"
+            },
+            "ap-south-1": {
+                "HVM64": "ami-0912f71e06545ad88"
+            },
+            "ap-notheast-2": {
+                "HVM64": "ami-0a10b2721688ce9d2"
+            },
+            "ap-southeast-1": {
+                "HVM64": "ami-01da99628f381e50a"
+            },
+            "ap-southeast-2": {
+                "HVM64": "ami-00e17d1165b9dd3ec"
+            },
+            "ap-northeast-1": {
+                "HVM64": "ami-08847abae18baa040"
+            },
+            "ca-central-1": {
+                "HVM64": "ami-ce1b96aa"
+            },
+            "eu-central-1": {
+                "HVM64": "ami-0f5dbc86dd9cbf7a8"
+            },
+            "eu-west-1": {
+                "HVM64": "ami-0bdb1d6c15a40392c"
+            },
+            "eu-west-2": {
+                "HVM64": "ami-e1768386"
+            },
+            "eu-west-3": {
+                "HVM64": "ami-06340c8c12baa6a09"
+            },
+            "sa-east-1": {
+                "HVM64": "ami-0ad7b0031d41ed4b9"
+            }
+        }
+    },
+    "Outputs": {
+        "MountTargetIDinAZ1": {
+            "Description": "Mount target ID",
+            "Value": {
+                "Ref": "WebSiteRootinAZ1"
+            }
+        },
+        "MountTargetIDinAZ2": {
+            "Description": "Mount target ID",
+            "Value": {
+                "Ref": "WebSiteRootinAZ2"
+            }
+        },
+        "FileSystemID": {
+            "Description": "File system ID",
+            "Value": {
+                "Ref": "WebSiteFS"
+            }
+        }
+    }
+}

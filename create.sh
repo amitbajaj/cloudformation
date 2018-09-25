@@ -1,1 +1,1 @@
-aws cloudformation create-stack --stack-name WebServer --template-body file://webserver --parameters ParameterKey=KeyName,ParameterValue=aws-eu-west-1 ParameterKey=AvailabilityZone,ParameterValue=eu-west-1a
+aws cloudformation create-stack --stack-name WebServer --template-body file://webserver.json --parameters ParameterKey=KeyName,ParameterValue=aws-eu-west-1 
