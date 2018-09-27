@@ -515,13 +515,16 @@
         "WebServerLBTargetGroup":{
             "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
             "Properties":{
-                "HealthCheckInternalSeconds":"10",
-                "UnhealthyThresholdCount": "3",
+                "HealthCheckIntervalSeconds":10,
+                "UnhealthyThresholdCount": 3,
                 "HealthCheckPath":"/",
-                "Name":"LoadBalancerTargetGroupForWebServers",
+                "Name":"LBTGForWebServers",
                 "Port":"80",
                 "Protocol":"HTTP",
-                "VpcId":{"Ref":"WebServerVPC"}
+                "VpcId":{"Ref":"WebServerVPC"},
+                "TargetGroupAttributes":[
+                    {"Key":"deregistration_delay.timeout_seconds", "Value":"60"}
+                ]
             }
         },
         "WebServerLC": {
@@ -547,7 +550,7 @@
                                 "/opt/aws/bin/cfn-init -v ",
                                 "         --stack ",
                                 {"Ref": "AWS::StackName"},
-                                "         --resource WebServer ",
+                                "         --resource WebServerLC ",
                                 "         --configsets Initialize ",
                                 "         --region ",
                                 {"Ref": "AWS::Region"},
@@ -556,7 +559,7 @@
                                 "/opt/aws/bin/cfn-signal -e $? ",
                                 "         --stack ",
                                 {"Ref": "AWS::StackName"},
-                                "         --resource WebServer ",
+                                "         --resource WebServerASG ",
                                 "         --region ",
                                 {"Ref": "AWS::Region"},
                                 "\n"
