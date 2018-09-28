@@ -121,6 +121,21 @@
         }
     },
     "Resources": {
+        "EFSSG":{
+            "Type":"AWS::EC2::SecurityGroup",
+            "Properties":{
+                "VpcId":{"Ref":"WebServerVPC"},
+                "GroupDescription":"Allow WebServers to access EFS",
+                "SecurityGroupIngress":[
+                    {
+                        "IpProtocol":"tcp",
+                        "FromPort":2049,
+                        "ToPort":2049,
+                        "SourceSecurityGroupId":{"Ref":"WebServerSG"}
+                    }
+                ]
+            }
+        },
         "WebServerSG": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -133,29 +148,13 @@
                         "IpProtocol": "tcp",
                         "FromPort": 22,
                         "ToPort": 22,
-                        "CidrIp": "0.0.0.0/0"
+                        "CidrIp": {"Ref":"IPSegmentForVPC"}
                     },
                     {
                         "IpProtocol": "tcp",
                         "FromPort": 80,
                         "ToPort": 80,
-                        "CidrIp": "0.0.0.0/0"
-                    },
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 2049,
-                        "ToPort": 2049,
-                        "CidrIp": {
-                            "Ref": "IPSegmentForWSinAZ1"
-                        }
-                    },
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 2049,
-                        "ToPort": 2049,
-                        "CidrIp": {
-                            "Ref": "IPSegmentForWSinAZ2"
-                        }
+                        "SourceSecurityGroupId":{"Ref":"LoadBalancerSG"}
                     }
                 ]
             }
@@ -255,7 +254,7 @@
                 },
                 "SecurityGroups": [
                     {
-                        "Ref": "WebServerSG"
+                        "Ref": "EFSSG"
                     }
                 ]
             }
@@ -271,7 +270,7 @@
                 },
                 "SecurityGroups": [
                     {
-                        "Ref": "WebServerSG"
+                        "Ref": "EFSSG"
                     }
                 ]
             }
@@ -643,7 +642,6 @@
             "DependsOn": ["NATGatewayinAZ1","NATGatewayinAZ2"],
             "Properties" : {
                "AutoScalingGroupName" : {"Fn::Join":["", ["WebServerASGin", {"Ref":"AWS::Region"}]]},
-               "AvailabilityZones" : [ {"Fn::Select":["0", {"Fn::GetAZs":{"Ref":"AWS::Region"} }]}, {"Fn::Select":["1", {"Fn::GetAZs":{"Ref":"AWS::Region"} }]} ],
                "VPCZoneIdentifier" : [{"Ref":"WebServerSubnetinAZ1"},{"Ref":"WebServerSubnetinAZ2"}],
                "Cooldown" : "15",
                "DesiredCapacity" : "1",
@@ -723,6 +721,10 @@
             "Value": {
                 "Ref": "WebSiteFS"
             }
+        },
+        "LoadBalancerURL":{
+            "Description": "URL of the Application ELB",
+            "Value":{"Fn::GetAtt":["WebServerLB","DNSName"]}
         }
     }
 }

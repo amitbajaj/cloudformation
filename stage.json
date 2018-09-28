@@ -157,3 +157,7 @@
                 "SecurityGroups" : [ {"Ref":"LoadBalancerSG"} ]
             }
         },
+
+
+
+        "AvailabilityZones" : [ {"Fn::Select":["0", {"Fn::GetAZs":{"Ref":"AWS::Region"} }]}, {"Fn::Select":["1", {"Fn::GetAZs":{"Ref":"AWS::Region"} }]} ],
