@@ -847,6 +847,10 @@
         "DatabaseEP":{
             "Description":"EndPoint of MySQL RDS Database",
             "Value":{"Fn::GetAtt":["MySQLDB","Endpoint.Address"]}
+        },
+        "DatabasePort":{
+            "Description":"MySQL RDS port number",
+            "Value":{"Ref":"DBPort"}
         }
     }
 }
