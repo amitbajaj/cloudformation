@@ -39,6 +39,12 @@
             "MinLength": "1",
             "Default": "10.0.0.64/27"
         },
+        "IPSegmentForDBinAZ1": {
+            "Description": "The CIDR Block range for RDS",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.0.0.96/27"
+        },
         "IPSegmentForPublicNetworkinAZ2":{
             "Description": "The CIDR Block range for Public Subnet",
             "Type": "String",
@@ -56,6 +62,12 @@
             "Type": "String",
             "MinLength": "1",
             "Default": "10.0.1.64/27"
+        },
+        "IPSegmentForDBinAZ2": {
+            "Description": "The CIDR Block range for RDS",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.0.1.96/27"
         },
         "InstanceSize": {
             "Description": "The size of the instance to create",
@@ -118,7 +130,38 @@
                 "cg1.4xlarge"
             ],
             "ConstraintDescription": "must be a valid EC2 instance type."
-        }
+        },
+        "DBInstanceClass": {
+            "Description" : "The size of the database instance",
+            "Type": "String",
+            "Default": "db.t2.micro",
+            "AllowedValues" : [ "db.t1.micro", "db.m1.small", "db.m1.medium", "db.m1.large", "db.m1.xlarge", "db.m2.xlarge", "db.m2.2xlarge", "db.m2.4xlarge", "db.m3.medium", "db.m3.large", "db.m3.xlarge", "db.m3.2xlarge", "db.m4.large", "db.m4.xlarge", "db.m4.2xlarge", "db.m4.4xlarge", "db.m4.10xlarge", "db.r3.large", "db.r3.xlarge", "db.r3.2xlarge", "db.r3.4xlarge", "db.r3.8xlarge", "db.m2.xlarge", "db.m2.2xlarge", "db.m2.4xlarge", "db.cr1.8xlarge", "db.t2.micro", "db.t2.small", "db.t2.medium", "db.t2.large"],
+            "ConstraintDescription" : "must select a valid database instance type."
+        },
+        "DBName":{
+            "Description":"The name of the database",
+            "Type":"String",
+            "Default":"WebDB"
+        },
+        "DBPort": {
+            "Description": "The port number for the DB Engine",
+            "Type": "String",
+            "MinLength": "4",
+            "Default": "4563"
+        },
+        "DBMasterUser": {
+            "Description": "Master Username for the database",
+            "Type": "String",
+            "MinLength": "4",
+            "Default": "dbadmin"
+        },
+        "DBMasterPassword": {
+            "Description": "Password for the Master Username",
+            "Type": "String",
+            "MinLength": "8",
+            "NoEcho":"true",
+            "Default":"PwD4MyDBinAw5"
+        }        
     },
     "Resources": {
         "EFSSG":{
@@ -161,6 +204,24 @@
                 "Tags":[{"Key":"Name","Value":"WebServer Security Group"}]
             }
         },
+        "DBSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "GroupDescription": "Allow WebServers to access Database",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": {"Ref":"DBPort"},
+                        "ToPort": {"Ref":"DBPort"},
+                        "SourceSecurityGroupId":{"Ref":"WebServerSG"}
+                    }
+                ],
+                "Tags":[{"Key":"Name","Value":"Database Security Group"}]
+            }
+        },        
         "LoadBalancerSG": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -213,7 +274,7 @@
                 "CidrBlock": {
                     "Ref": "IPSegmentForWSinAZ1"
                 },
-                "MapPublicIpOnLaunch": "true",
+                "MapPublicIpOnLaunch": "false",
                 "VpcId": {
                     "Ref": "WebServerVPC"
                 },
@@ -227,12 +288,40 @@
                 "CidrBlock": {
                     "Ref": "IPSegmentForWSinAZ2"
                 },
-                "MapPublicIpOnLaunch": "true",
+                "MapPublicIpOnLaunch": "false",
                 "VpcId": {
                     "Ref": "WebServerVPC"
                 },
                 "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
                 "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["WebServer Subnet in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
+            }
+        },
+        "DBSubnetinAZ1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "IPSegmentForDBinAZ1"
+                },
+                "MapPublicIpOnLaunch": "false",
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["DB Subnet in AZ1 [",{"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}}]},"]" ]] }}]
+            }
+        },
+        "DBSubnetinAZ2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "IPSegmentForDBinAZ2"
+                },
+                "MapPublicIpOnLaunch": "false",
+                "VpcId": {
+                    "Ref": "WebServerVPC"
+                },
+                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["DB Subnet in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "WebServerVPC": {
@@ -548,7 +637,7 @@
         },
         "WebServerLC": {
             "Type" : "AWS::AutoScaling::LaunchConfiguration",
-            "DependsOn": ["WebSiteRootinAZ1", "WebSiteRootinAZ2", "VPCIGAttachment"],
+            "DependsOn": ["WebSiteRootinAZ1", "WebSiteRootinAZ2", "VPCIGAttachment", "MySQLDB"],
             "Properties" : {
                 "AssociatePublicIpAddress" : "false",
                 "EbsOptimized" : "false",
@@ -672,6 +761,33 @@
                "MaxSize" : "3",
                "MinSize" : "1"
             }
+        },
+        "MySQLDBSubnetGroup":{
+            "Type":"AWS::RDS::DBSubnetGroup",
+            "Properties":{
+                "DBSubnetGroupDescription" : "Subnet group for RDS",
+                "SubnetIds":[{"Ref":"DBSubnetinAZ1"},{"Ref":"DBSubnetinAZ2"}],
+                "Tags":[{"Key":"Name","Value":"Database Subnets"}]
+            }
+        },
+        "MySQLDB":{
+            "Type" : "AWS::RDS::DBInstance",
+            "Properties":{
+                "DBInstanceIdentifier":"mysql-webservers",
+                "DBName":{"Ref":"DBName"},
+                "AllocatedStorage":"20",
+                "DBInstanceClass":{"Ref":"DBInstanceClass"},
+                "Engine":"MySQL",
+                "EngineVersion":"5.7.23",
+                "MultiAZ":"true",
+                "Port":{"Ref":"DBPort"},
+                "VPCSecurityGroups":[{"Ref":"DBSG"}],
+                "MasterUsername":{"Ref":"DBMasterUser"},
+                "MasterUserPassword":{"Ref":"DBMasterPassword"},
+                "Tags":[{"Key":"Name","Value":"Backend Database"}],
+                "PubliclyAccessible":"false",
+                "DBSubnetGroupName":{"Ref":"MySQLDBSubnetGroup"}
+            }
         }
     },
     "Mappings": {
@@ -724,27 +840,13 @@
         }
     },
     "Outputs": {
-        "MountTargetIDinAZ1": {
-            "Description": "Mount target ID",
-            "Value": {
-                "Ref": "WebSiteRootinAZ1"
-            }
-        },
-        "MountTargetIDinAZ2": {
-            "Description": "Mount target ID",
-            "Value": {
-                "Ref": "WebSiteRootinAZ2"
-            }
-        },
-        "FileSystemID": {
-            "Description": "File system ID",
-            "Value": {
-                "Ref": "WebSiteFS"
-            }
-        },
         "LoadBalancerURL":{
             "Description": "URL of the Application ELB",
             "Value":{"Fn::Join":["",["http://",{"Fn::GetAtt":["WebServerLB","DNSName"]}]]} 
+        },
+        "DatabaseEP":{
+            "Description":"EndPoint of MySQL RDS Database",
+            "Value":{"Fn::GetAtt":["MySQLDB","Endpoint.Address"]}
         }
     }
 }

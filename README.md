@@ -8,7 +8,7 @@ This repository will host the sample AWS CloudFormation Templates
 All the template here are in JSON format
 
 ## Template List
-* webserver.json ->
+* webserver.json
 
 This template will create a highly available LAMP stack across 2 AZs in the target region from where the creation is initiated.
 The template will create a full stack and includes the following:
