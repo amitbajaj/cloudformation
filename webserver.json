@@ -25,7 +25,7 @@
             "Description": "The CIDR Block range for Public Subnet",
             "Type": "String",
             "MinLength":"1",
-            "Default":"10.0.0.0/28"
+            "Default":"10.0.0.0/27"
         },
         "IPSegmentForWSinAZ1": {
             "Description": "The CIDR Block range for Web Servers",
@@ -43,7 +43,7 @@
             "Description": "The CIDR Block range for Public Subnet",
             "Type": "String",
             "MinLength":"1",
-            "Default":"10.0.1.0/28"
+            "Default":"10.0.1.0/27"
         },
         "IPSegmentForWSinAZ2": {
             "Description": "The CIDR Block range for Web Servers",
@@ -133,7 +133,8 @@
                         "ToPort":2049,
                         "SourceSecurityGroupId":{"Ref":"WebServerSG"}
                     }
-                ]
+                ],
+                "Tags":[{"Key":"Name","Value":"EFS Security Group"}]
             }
         },
         "WebServerSG": {
@@ -142,7 +143,7 @@
                 "VpcId": {
                     "Ref": "WebServerVPC"
                 },
-                "GroupDescription": "Allow SSH and Web Access from anywhere",
+                "GroupDescription": "Allow SSH from VPC and Web Access from ELB",
                 "SecurityGroupIngress": [
                     {
                         "IpProtocol": "tcp",
@@ -156,7 +157,8 @@
                         "ToPort": 80,
                         "SourceSecurityGroupId":{"Ref":"LoadBalancerSG"}
                     }
-                ]
+                ],
+                "Tags":[{"Key":"Name","Value":"WebServer Security Group"}]
             }
         },
         "LoadBalancerSG": {
@@ -173,7 +175,8 @@
                         "ToPort": 80,
                         "CidrIp": "0.0.0.0/0"
                     }
-                ]
+                ],
+                "Tags":[{"Key":"Name","Value":"Load Balancer Security Group"}]
             }
         },
         "PublicSubnetinAZ1": {
@@ -186,7 +189,8 @@
                 "VpcId": {
                     "Ref": "WebServerVPC"
                 },
-                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["Public Subnet in AZ1 [",{"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "PublicSubnetinAZ2": {
@@ -199,7 +203,8 @@
                 "VpcId": {
                     "Ref": "WebServerVPC"
                 },
-                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["Public Subnet in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}}]},"]" ]] }}]
             }
         },
         "WebServerSubnetinAZ1": {
@@ -212,7 +217,8 @@
                 "VpcId": {
                     "Ref": "WebServerVPC"
                 },
-                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["WebServer Subnet in AZ1 [",{"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}}]},"]" ]] }}]
             }
         },
         "WebServerSubnetinAZ2": {
@@ -225,7 +231,8 @@
                 "VpcId": {
                     "Ref": "WebServerVPC"
                 },
-                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["WebServer Subnet in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "WebServerVPC": {
@@ -236,12 +243,15 @@
                     "Ref": "IPSegmentForVPC"
                 },
                 "EnableDnsSupport": "true",
-                "EnableDnsHostnames": "true"
+                "EnableDnsHostnames": "true",
+                "Tags":[{"Key":"Name","Value":"LAMP VPC"}]
             }
         },
         "WebSiteFS": {
             "Type": "AWS::EFS::FileSystem",
-            "Properties": {}
+            "Properties": {
+                
+            }
         },
         "WebSiteRootinAZ1": {
             "Type": "AWS::EFS::MountTarget",
@@ -274,6 +284,7 @@
                     }
                 ]
             }
+            
         },
         "EFSSubnetinAZ1": {
             "Type": "AWS::EC2::Subnet",
@@ -285,7 +296,8 @@
                     "Ref": "IPSegmentForFSinAZ1"
                 },
                 "MapPublicIpOnLaunch": "false",
-                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+                "AvailabilityZone": {"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["EFS Subnet in AZ1 [",{"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "EFSSubnetinAZ2": {
@@ -298,7 +310,8 @@
                     "Ref": "IPSegmentForFSinAZ2"
                 },
                 "MapPublicIpOnLaunch": "false",
-                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]}
+                "AvailabilityZone": {"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["EFS Subnet in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "VPCIG": {
@@ -321,7 +334,8 @@
             "Properties": {
                 "VpcId": {
                     "Ref": "WebServerVPC"
-                }
+                },
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["Public RT in AZ1 [",{"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "PublicRouteTableForAZ2": {
@@ -329,7 +343,8 @@
             "Properties": {
                 "VpcId": {
                     "Ref": "WebServerVPC"
-                }
+                },
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["Public RT in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "InternetRouteForAZ1": {
@@ -394,14 +409,16 @@
             "Type":"AWS::EC2::NatGateway",
             "Properties":{
                 "AllocationId": {"Fn::GetAtt" : ["PublicIPinAZ1", "AllocationId"]},
-                "SubnetId":{"Ref":"PublicSubnetinAZ1"}
+                "SubnetId":{"Ref":"PublicSubnetinAZ1"},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["NAT Gateway in AZ1 [",{"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "NATGatewayinAZ2":{
             "Type":"AWS::EC2::NatGateway",
             "Properties":{
                 "AllocationId":{"Fn::GetAtt" : ["PublicIPinAZ2", "AllocationId"]},
-                "SubnetId":{"Ref":"PublicSubnetinAZ2"}
+                "SubnetId":{"Ref":"PublicSubnetinAZ2"},
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["NAT Gateway in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "PrivateRouteTableForAZ1": {
@@ -409,7 +426,8 @@
             "Properties": {
                 "VpcId": {
                     "Ref": "WebServerVPC"
-                }
+                },
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["Private RT in AZ1 [",{"Fn::Select": ["0",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "PrivateRouteTableForAZ2": {
@@ -417,7 +435,8 @@
             "Properties": {
                 "VpcId": {
                     "Ref": "WebServerVPC"
-                }
+                },
+                "Tags":[{"Key":"Name","Value":{"Fn::Join":["",["Public RT in AZ2 [",{"Fn::Select": ["1",  {"Fn::GetAZs" : {"Ref":"AWS::Region"}} ]},"]"]] }}]
             }
         },
         "NATRouteInAZ1": {
@@ -497,7 +516,7 @@
                 }],
                 "LoadBalancerArn":{"Ref":"WebServerLB"},
                 "Port":"80",
-                "Protocol":"HTTP"    
+                "Protocol":"HTTP"
             }
         },
         "WebServerLB":{
@@ -507,8 +526,9 @@
                 "Name":"LoadBalancerForWebServers",
                 "Scheme":"internet-facing",
                 "SecurityGroups":[ {"Ref":"LoadBalancerSG"} ],
-                "Subnets":[{"Ref":"WebServerSubnetinAZ1"},{"Ref":"WebServerSubnetinAZ2"}],
-                "Type":"application"
+                "Subnets":[{"Ref":"PublicSubnetinAZ1"},{"Ref":"PublicSubnetinAZ2"}],
+                "Type":"application",
+                "Tags":[{"Key":"Name","Value":"Load Balancer"}]
             }
         },
         "WebServerLBTargetGroup":{
@@ -643,9 +663,9 @@
             "Properties" : {
                "AutoScalingGroupName" : {"Fn::Join":["", ["WebServerASGin", {"Ref":"AWS::Region"}]]},
                "VPCZoneIdentifier" : [{"Ref":"WebServerSubnetinAZ1"},{"Ref":"WebServerSubnetinAZ2"}],
-               "Cooldown" : "15",
+               "Cooldown" : "300",
                "DesiredCapacity" : "1",
-               "HealthCheckGracePeriod" : 10,
+               "HealthCheckGracePeriod" : 300,
                "HealthCheckType" : "ELB",
                "LaunchConfigurationName" : {"Ref":"WebServerLC"},
                "TargetGroupARNs" : [ {"Ref":"WebServerLBTargetGroup"} ],
@@ -724,7 +744,7 @@
         },
         "LoadBalancerURL":{
             "Description": "URL of the Application ELB",
-            "Value":{"Fn::GetAtt":["WebServerLB","DNSName"]}
+            "Value":{"Fn::Join":["",["http://",{"Fn::GetAtt":["WebServerLB","DNSName"]}]]} 
         }
     }
 }
