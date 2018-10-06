@@ -22,6 +22,7 @@ The template will create a full stack and includes the following:
  - Launch Configuration
  - Target groups
  - Application Load Balancer
+ - Multi-AZ MySQL RDS Instance
 ```
 
 ## Extras
